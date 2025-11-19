@@ -17,9 +17,9 @@ const accountService = {
 
 	async add(c, params, userId) {
 
-		const { addEmailVerify , addEmail, manyEmail, addVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c);
+		const { addEmailVerify, addEmail, manyEmail, addVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c);
 
-		let { email, token } = params;
+		let { email, token, enable } = params;
 
 
 		if (!(addEmail === settingConst.addEmail.OPEN && manyEmail === settingConst.manyEmail.OPEN)) {
@@ -40,7 +40,7 @@ const accountService = {
 		}
 
 		if (emailUtils.getName(email).length < minEmailPrefix) {
-			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix } ));
+			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix }));
 		}
 
 		if (emailPrefixFilter.some(content => emailUtils.getName(email).includes(content))) {
@@ -50,7 +50,12 @@ const accountService = {
 		let accountRow = await this.selectByEmailIncludeDel(c, email);
 
 		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelAccount'));
+			if (enable) {
+				await this.physicsDelete(c, { accountId: accountRow.accountId });
+				accountRow = null;
+			} else {
+				throw new BizError(t('isDelAccount'), 601);
+			}
 		}
 
 		if (accountRow) {
@@ -64,11 +69,11 @@ const accountService = {
 
 			if (roleRow.accountCount > 0) {
 				const userAccountCount = await accountService.countUserAccount(c, userId)
-				if(userAccountCount >= roleRow.accountCount) throw new BizError(t('accountLimit'), 403);
+				if (userAccountCount >= roleRow.accountCount) throw new BizError(t('accountLimit'), 403);
 			}
 
-			if(!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
-				throw new BizError(t('noDomainPermAdd'),403)
+			if (!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
+				throw new BizError(t('noDomainPermAdd'), 403)
 			}
 
 		}
@@ -83,7 +88,7 @@ const accountService = {
 		if (addEmailVerify === settingConst.addEmailVerify.COUNT) {
 			addVerifyOpen = await verifyRecordService.isOpenAddVerify(c, addVerifyCount);
 			if (addVerifyOpen) {
-				await turnstileService.verify(c,token)
+				await turnstileService.verify(c, token)
 			}
 		}
 
@@ -165,7 +170,7 @@ const accountService = {
 
 	async physicsDeleteByUserIds(c, userIds) {
 		await emailService.physicsDeleteUserIds(c, userIds);
-		await orm(c).delete(account).where(inArray(account.userId,userIds)).run();
+		await orm(c).delete(account).where(inArray(account.userId, userIds)).run();
 	},
 
 	async selectUserAccountCountList(c, userIds, del = isDel.NORMAL) {
@@ -184,16 +189,16 @@ const accountService = {
 	},
 
 	async countUserAccount(c, userId) {
-		const { num } = await orm(c).select({num: count()}).from(account).where(and(eq(account.userId, userId),eq(account.isDel, isDel.NORMAL))).get();
+		const { num } = await orm(c).select({ num: count() }).from(account).where(and(eq(account.userId, userId), eq(account.isDel, isDel.NORMAL))).get();
 		return num;
 	},
 
 	async restoreByEmail(c, email) {
-		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.email, email)).run();
+		await orm(c).update(account).set({ isDel: isDel.NORMAL }).where(eq(account.email, email)).run();
 	},
 
 	async restoreByUserId(c, userId) {
-		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.userId, userId)).run();
+		await orm(c).update(account).set({ isDel: isDel.NORMAL }).where(eq(account.userId, userId)).run();
 	},
 
 	async setName(c, params, userId) {
@@ -201,7 +206,7 @@ const accountService = {
 		if (name.length > 30) {
 			throw new BizError(t('usernameLengthLimit'));
 		}
-		await orm(c).update(account).set({name}).where(and(eq(account.userId, userId),eq(account.accountId, accountId))).run();
+		await orm(c).update(account).set({ name }).where(and(eq(account.userId, userId), eq(account.accountId, accountId))).run();
 	},
 
 	async allAccount(c, params) {
@@ -221,7 +226,7 @@ const accountService = {
 
 		const userRow = await userService.selectByIdIncludeDel(c, userId);
 
-		const list = await orm(c).select().from(account).where(and(eq(account.userId, userId),ne(account.email,userRow.email))).limit(size).offset(num);
+		const list = await orm(c).select().from(account).where(and(eq(account.userId, userId), ne(account.email, userRow.email))).limit(size).offset(num);
 		const { total } = await orm(c).select({ total: count() }).from(account).where(eq(account.userId, userId)).get();
 
 		return { list, total }

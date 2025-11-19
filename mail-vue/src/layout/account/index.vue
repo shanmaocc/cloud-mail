@@ -422,20 +422,25 @@ function submit() {
 
   addLoading.value = true
   accountAdd(addForm.email + addForm.suffix, verifyToken).then(account => {
-    addLoading.value = false
-    showAdd.value = false
-    addForm.email = ''
-    accounts.push(account)
-    verifyToken = ''
-    settingStore.settings.addVerifyOpen = account.addVerifyOpen
-    ElMessage({
-      message: t('addSuccessMsg'),
-      type: "success",
-      plain: true
-    })
-    verifyShow.value = false
-    userStore.refreshUserInfo()
+    handleAddSuccess(account)
   }).catch(res => {
+    if (res.code === 601) {
+      ElMessageBox.confirm(t('isDelAccount'), {
+        confirmButtonText: t('confirm'),
+        cancelButtonText: t('cancel'),
+        type: 'warning'
+      }).then(() => {
+        addLoading.value = true
+        accountAdd(addForm.email + addForm.suffix, verifyToken, true).then(account => {
+          handleAddSuccess(account)
+        }).catch(e => {
+          addLoading.value = false
+        })
+      }).catch(() => {
+        addLoading.value = false
+      })
+      return
+    }
     if (res.code === 400) {
       verifyToken = ''
       if (turnstileId) {
@@ -449,6 +454,22 @@ function submit() {
     }
     addLoading.value = false
   })
+}
+
+function handleAddSuccess(account) {
+  addLoading.value = false
+  showAdd.value = false
+  addForm.email = ''
+  accounts.push(account)
+  verifyToken = ''
+  settingStore.settings.addVerifyOpen = account.addVerifyOpen
+  ElMessage({
+    message: t('addSuccessMsg'),
+    type: "success",
+    plain: true
+  })
+  verifyShow.value = false
+  userStore.refreshUserInfo()
 }
 </script>
 <style>
