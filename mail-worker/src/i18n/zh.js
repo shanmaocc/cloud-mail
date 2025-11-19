@@ -5,7 +5,7 @@ const zh = {
 	emptyEmail: '邮箱不能为空',
 	notEmail: '非法邮箱',
 	notExistDomain: '不存在的邮箱域名',
-	isDelAccount: '该邮箱已被注销',
+	isDelAccount: '邮箱已注销是否重新启用',
 	isRegAccount: '该邮箱已被注册',
 	accountLimit: '添加邮箱数量到达限制',
 	delMyAccount: '不可以删除自己的邮箱',
